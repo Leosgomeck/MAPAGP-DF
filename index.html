@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galpão 17 - Mapa 3D Interativo</title>
+<style>
+    body { margin: 0; overflow: hidden; background: #333333; font-family: sans-serif; }
+    #painel-topo { position: absolute; top: 15px; width: 100%; text-align: center; color: #fff; pointer-events: none; z-index: 10; text-shadow: 1px 1px 2px #000; }
+    .etiqueta-texto { color: #FFF; background: rgba(0, 0, 0, 0.85); padding: 3px 5px; border-radius: 3px; font-size: 8.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.5); text-align: center; }
+    .etiqueta-lateral { color: #FFF; background: transparent; font-size: 10px; font-weight: bold; letter-spacing: 2px; writing-mode: vertical-rl; text-orientation: mixed; opacity: 0.8; }
+</style>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+</head>
+<body>
+<div id="painel-topo"><h3>Mapa 3D - Galpão 17</h3>Arraste para girar • Role para zoom</div>
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    const cena = new THREE.Scene();
+    cena.background = new THREE.Color(0x333333);
+    cena.fog = new THREE.Fog(0x333333, 20, 85);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.set(0, 42, 38);
+
+    const renderizador = new THREE.WebGLRenderer({ antialias: true });
+    renderizador.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderizador.domElement);
+
+    const renderizadorCSS = new CSS2DRenderer();
+    renderizadorCSS.setSize(window.innerWidth, window.innerHeight);
+    renderizadorCSS.domElement.style.position = 'absolute';
+    renderizadorCSS.domElement.style.top = '0px';
+    document.body.appendChild(renderizadorCSS.domElement);
+
+    const controles = new OrbitControls(camera, renderizadorCSS.domElement);
+    controles.enableDamping = true;
+    controles.maxPolarAngle = Math.PI / 2 - 0.1;
+    controles.autoRotate = true;
+    controles.autoRotateSpeed = -1.5;
+
+    const luz = new THREE.DirectionalLight(0xffffff, 2.5);
+    luz.position.set(15, 30, 15);
+    cena.add(luz);
+    cena.add(new THREE.AmbientLight(0xffffff, 1.8));
+
+    // Luzes piscantes do Palco
+    const luzPalco1 = new THREE.PointLight(0xff0000, 0, 25);
+    luzPalco1.position.set(-3, 3, 6);
+    cena.add(luzPalco1);
+    const luzPalco2 = new THREE.PointLight(0x00ffff, 0, 25);
+    luzPalco2.position.set(3, 3, 6);
+    cena.add(luzPalco2);
+    const luzPalco3 = new THREE.PointLight(0xff00ff, 0, 25);
+    luzPalco3.position.set(0, 3, 6);
+    cena.add(luzPalco3);
+    const luzPalco4 = new THREE.PointLight(0xffff00, 0, 25);
+    luzPalco4.position.set(0, 4, 7);
+    cena.add(luzPalco4);
+
+    function criarBloco(w, h, d, corHex, x, z, nomeLugar, rotY=0) {
+        const geometria = new THREE.BoxGeometry(w, h, d);
+        const material = new THREE.MeshLambertMaterial({ color: corHex });
+        const malha = new THREE.Mesh(geometria, material);
+        malha.position.set(x, h/2, z);
+        malha.rotation.y = rotY;
+        cena.add(malha);
+
+        if (nomeLugar) {
+            const elementoDiv = document.createElement('div');
+            elementoDiv.className = 'etiqueta-texto';
+            elementoDiv.innerHTML = nomeLugar;
+            const objCSS = new CSS2DObject(elementoDiv);
+            objCSS.position.set(0, h/2 + 0.5, 0);
+            malha.add(objCSS);
+        }
+        return malha;
+    }
+
+    function criarTextoLateral(texto, x, z) {
+        const divTxt = document.createElement('div');
+        divTxt.className = 'etiqueta-lateral';
+        divTxt.textContent = texto;
+        const objTxt = new CSS2DObject(divTxt);
+        objTxt.position.set(x, 0.1, z);
+        cena.add(objTxt);
+    }
+
+    const matMadeira = new THREE.MeshLambertMaterial({ color: 0xc19a6b });
+    const matCadeira = new THREE.MeshLambertMaterial({ color: 0x553311 });
+
+    function addCadeira(grupo, cx, cz, rotY) {
+        const cadeira = new THREE.Group();
+        const assento = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), matCadeira);
+        assento.position.set(0, 0.25, 0);
+        const encosto = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.05), matCadeira);
+        encosto.position.set(0, 0.45, -0.125);
+        cadeira.add(assento);
+        cadeira.add(encosto);
+        cadeira.position.set(cx, 0, cz);
+        cadeira.rotation.y = rotY;
+        grupo.add(cadeira);
+    }
+
+    function criarMesaQuadrada(x, z, y=0) {
+        const grupo = new THREE.Group();
+        const tampo = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.8), matMadeira);
+        tampo.position.set(0, 0.5, 0);
+        const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.5, 4), matCadeira);
+        pe.position.set(0, 0.25, 0);
+        grupo.add(tampo);
+        grupo.add(pe);
+
+        addCadeira(grupo, 0, -0.6, 0);
+        addCadeira(grupo, 0, 0.6, Math.PI);
+        addCadeira(grupo, -0.6, 0, Math.PI/2);
+        addCadeira(grupo, 0.6, 0, -Math.PI/2);
+
+        grupo.position.set(x, y, z);
+        cena.add(grupo);
+    }
+
+    function criarMesaRedonda(x, z, y=0) {
+        const grupo = new THREE.Group();
+        const tampo = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 16), matMadeira);
+        tampo.position.set(0, 0.5, 0);
+        const pe = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), matCadeira);
+        pe.position.set(0, 0.25, 0);
+        grupo.add(tampo);
+        grupo.add(pe);
+
+        addCadeira(grupo, 0, -0.7, 0);
+        addCadeira(grupo, 0, 0.7, Math.PI);
+        addCadeira(grupo, -0.7, 0, Math.PI/2);
+        addCadeira(grupo, 0.7, 0, -Math.PI/2);
+
+        grupo.position.set(x, y, z);
+        cena.add(grupo);
+    }
+
+    function criarMesaRetangular(x, z, y=0) {
+        const grupo = new THREE.Group();
+        const tampo = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.8), matMadeira);
+        tampo.position.set(0, 0.5, 0);
+        const pe1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), matCadeira);
+        pe1.position.set(-0.5, 0.25, 0);
+        const pe2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), matCadeira);
+        pe2.position.set(0.5, 0.25, 0);
+        grupo.add(tampo);
+        grupo.add(pe1);
+        grupo.add(pe2);
+
+        addCadeira(grupo, -0.5, -0.6, 0);
+        addCadeira(grupo, 0, -0.6, 0);
+        addCadeira(grupo, 0.5, -0.6, 0);
+        addCadeira(grupo, -0.5, 0.6, Math.PI);
+        addCadeira(grupo, 0, 0.6, Math.PI);
+        addCadeira(grupo, 0.5, 0.6, Math.PI);
+
+        grupo.rotation.y = -Math.PI / 6;
+        grupo.position.set(x, y, z);
+        cena.add(grupo);
+    }
+
+    // Base/Chão principal
+    const chaoGeo = new THREE.PlaneGeometry(24, 16);
+    const chaoMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+    const chao = new THREE.Mesh(chaoGeo, chaoMat);
+    chao.rotation.x = -Math.PI / 2;
+    cena.add(chao);
+
+    // EXTERNOS E NOVOS ELEMENTOS
+    criarBloco(1.5, 1.5, 3, 0xc87a9f, -18, -5, 'KIDS');
+
+    // CAIXAS (Abaixo de Kids)
+    criarBloco(1.5, 1.5, 3, 0x1144cc, -18, -1, 'CAIXAS');
+
+    // PIZZAS (Abaixo de Caixas)
+    criarBloco(1.5, 1.5, 3, 0xcc3322, -18, 2.5, 'PIZZAS');
+
+    // FURYA GARAGE (Exterior topo esquerdo)
+    criarBloco(4, 1.5, 2, 0x337733, -2.5, -13, 'FURYA GARAGE');
+
+    // LAVA JATO (Exterior topo centro-direito)
+    criarBloco(4, 1.5, 2, 0x8899aa, 2, -13, 'LAVA JATO');
+
+    // CREPE (Parede superior, lado esquerdo da Entrada C)
+    criarBloco(2.5, 1.5, 1.5, 0xeeeeee, -1, -8.5, 'CREPE');
+
+    // LOJA / YAKITON
+    criarBloco(3, 1.5, 1.5, 0xffffff, -16, 9.5, 'Galpão Store');
+    criarBloco(3, 1.5, 1.5, 0x99ccff, -12.5, 9.5, 'YAKITON');
+
+    // WC
+    criarBloco(2.5, 1.5, 3, 0x77aa77, 9.5, -15, 'WC');
+
+    // ENTRADAS E PAREDE ESQUERDA
+    criarBloco(1, 0.5, 3, 0x111111, -12.5, -3, 'ENTRADA A');
+    criarBloco(1, 0.5, 3, 0x111111, -12.5, 4, 'ENTRADA B');
+    criarBloco(2, 1.2, 3, 0xffcc00, -10, 0, 'CHOPEIRA A');
+
+    // BORDA INFERIOR
+    criarBloco(3.5, 1.5, 1.5, 0xdd0000, -6, 7.5, 'BURGER');
+    criarBloco(8, 0.6, 4, 0x008888, 0, 7, 'PALCO');
+    criarBloco(3, 1.2, 1.5, 0x33cc33, 6, 7.5, 'DRINKS');
+
+    // TOPO / DIREITA
+    criarBloco(4, 0.5, 1, 0x111111, 4, -8.5, 'ENTRADA C');
+    criarBloco(2, 1.2, 4, 0xffcc00, 9, -11.5, 'CHOPEIRA B');
+
+    // ÁREA DIREITA (EMBAIXO DO MEZANINO)
+    criarBloco(3, 1, 2, 0x00cc00, 13, -4, 'SINUCA<br>TÉRREO');
+    criarBloco(3, 1.5, 4, 0xff3333, 13, 6, 'PORCO<br>TÉRREO');
+
+    // MEZANINO
+    const mezGeo = new THREE.BoxGeometry(4, 4, 16);
+    const mezMat = new THREE.MeshLambertMaterial({ color: 0xffcc44, transparent: true, opacity: 0.65 });
+    const mez = new THREE.Mesh(mezGeo, mezMat);
+    mez.position.set(14, 2, 0);
+    cena.add(mez);
+
+    const divMez = document.createElement('div');
+    divMez.className = 'etiqueta-lateral';
+    divMez.innerHTML = 'MEZANINO<br>PISO SUPERIOR';
+    divMez.style.textAlign = 'center';
+    const labelMez = new CSS2DObject(divMez);
+    labelMez.position.set(14, 4.5, 0);
+    cena.add(labelMez);
+
+    // TEXTOS LATERAIS
+    criarTextoLateral('LATERAL ESQUERDA', 8, 0);
+    criarTextoLateral('LATERAL DIREITA', -4, 0);
+
+    // Setinha Entrada
+    const setinhaDiv = document.createElement('div');
+    setinhaDiv.style.color = '#fff';
+    setinhaDiv.style.fontSize = '12px';
+    setinhaDiv.style.fontWeight = 'bold';
+    setinhaDiv.style.transform = 'rotate(-30deg)';
+    setinhaDiv.innerHTML = '⬈ ENTRADA';
+    const setinha = new CSS2DObject(setinhaDiv);
+    setinha.position.set(-18, 0, 7.5);
+    cena.add(setinha);
+
+    // COLOCAÇÃO DAS MESAS
+    // Mesas resinadas do lado de fora (Topo)
+    criarMesaRedonda(-8, -10.5);
+    criarMesaRedonda(-5, -10.5);
+    criarMesaRedonda(-2, -10.5);
+    criarMesaRedonda(1, -10.5);
+
+    // Mesa resinada perto da Entrada A e mesa mais afastada perto das Pizzas
+    criarMesaRedonda(-14, -3); // Perto da entrada A
+    criarMesaRedonda(-15, 2); // Lado esquerdo perto Pizzas e Entrada B
+
+    // Quadradas no meio
+    [-3.5, -1, 1.5, 4, 6.5].forEach(x => criarMesaQuadrada(x, -2.5));
+
+    // Redondas na Lateral Direita (Esquerda do salão internamente)
+    criarMesaRedonda(-6, -1);
+    criarMesaRedonda(-6.5, 4);
+    criarMesaRedonda(-4.5, 6);
+    criarMesaRedonda(-7.5, 6.5);
+
+    // Redondas na Lateral Esquerda (Direita do salão internamente)
+    criarMesaRedonda(8, 2.5);
+    criarMesaRedonda(6.5, 4.5);
+    criarMesaRedonda(8.5, 6);
+
+    // Retangular perto do Porco
+    criarMesaRetangular(11, 7.5);
+
+    // MESAS NO MEZANINO (Y = 4)
+    criarMesaRedonda(13.5, 1, 4);
+    criarMesaQuadrada(14, 5, 4);
+
+    // SOFÁ PRETO EM L NO MEZANINO
+    const matSofa = new THREE.MeshLambertMaterial({ color: 0x181818 });
+    const sofaGroup = new THREE.Group();
+
+    const assentoMain = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.8), matSofa);
+    assentoMain.position.set(0, 0.15, 0);
+    const encostoMain = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.2), matSofa);
+    encostoMain.position.set(0, 0.5, -0.3);
+
+    const assentoL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 1.2), matSofa);
+    assentoL.position.set(-0.7, 0.15, 1.0);
+    const encostoL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 1.2), matSofa);
+    encostoL.position.set(-1.0, 0.5, 1.0);
+
+    sofaGroup.add(assentoMain);
+    sofaGroup.add(encostoMain);
+    sofaGroup.add(assentoL);
+    sofaGroup.add(encostoL);
+
+    sofaGroup.position.set(14.5, 4, -5.5);
+    sofaGroup.rotation.y = -Math.PI / 2;
+    cena.add(sofaGroup);
+
+    // BONECOS
+    const coresRoupas = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffffff, 0xff9900];
+    const matPele = new THREE.MeshLambertMaterial({ color: 0xffddbb });
+    const matCalca = new THREE.MeshLambertMaterial({ color: 0x111111 });
+
+    function gerarPessoa(posX, posZ, alturaY = 0) {
+        const corSorteada = coresRoupas[Math.floor(Math.random() * coresRoupas.length)];
+        const matCamisa = new THREE.MeshLambertMaterial({ color: corSorteada });
+
+        const grupoPessoa = new THREE.Group();
+
+        const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), matPele);
+        cabeca.position.set(0, 1.55, 0);
+        grupoPessoa.add(cabeca);
+
+        const pescoco = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1), matPele);
+        pescoco.position.set(0, 1.4, 0);
+        grupoPessoa.add(pescoco);
+
+        const troncoGeo = new THREE.CylinderGeometry(0.2, 0.15, 0.55, 4);
+        const tronco = new THREE.Mesh(troncoGeo, matCamisa);
+        tronco.rotation.y = Math.PI / 4;
+        tronco.position.set(0, 1.1, 0);
+        grupoPessoa.add(tronco);
+
+        const pernaGeo = new THREE.CylinderGeometry(0.06, 0.05, 0.7, 8);
+        const pernaEsq = new THREE.Mesh(pernaGeo, matCalca);
+        pernaEsq.position.set(-0.1, 0.35, 0);
+        const pernaDir = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.7, 8), matCalca);
+        pernaDir.position.set(0.1, 0.35, 0);
+        grupoPessoa.add(pernaEsq);
+        grupoPessoa.add(pernaDir);
+
+        const sapatoGeo = new THREE.BoxGeometry(0.08, 0.08, 0.15);
+        const sapatoEsq = new THREE.Mesh(sapatoGeo, matCalca);
+        sapatoEsq.position.set(-0.1, 0.04, 0.03);
+        const sapatoDir = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.15), matCalca);
+        sapatoDir.position.set(0.1, 0.04, 0.03);
+        grupoPessoa.add(sapatoEsq);
+        grupoPessoa.add(sapatoDir);
+
+        const bracoGeo = new THREE.CylinderGeometry(0.035, 0.03, 0.5, 8);
+        const bracoEsq = new THREE.Mesh(bracoGeo, matPele);
+        bracoEsq.position.set(-0.25, 1.05, 0);
+        bracoEsq.rotation.z = Math.PI / 16;
+        const bracoDir = new THREE.Mesh(bracoGeo, matPele);
+        bracoDir.position.set(0.25, 1.05, 0);
+        bracoDir.rotation.z = -Math.PI / 16;
+
+        const mangaGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.2, 8);
+        const mangaEsq = new THREE.Mesh(mangaGeo, matCamisa);
+        mangaEsq.position.set(-0.24, 1.25, 0);
+        mangaEsq.rotation.z = Math.PI / 8;
+        const mangaDir = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.2, 8), matCamisa);
+        mangaDir.position.set(0.24, 1.25, 0);
+        mangaDir.rotation.z = -Math.PI / 8;
+
+        grupoPessoa.add(bracoEsq);
+        grupoPessoa.add(bracoDir);
+        grupoPessoa.add(mangaEsq);
+        grupoPessoa.add(mangaDir);
+
+        grupoPessoa.rotation.y = Math.random() * Math.PI * 2;
+
+        grupoPessoa.position.set(posX, alturaY, posZ);
+        cena.add(grupoPessoa);
+    }
+
+    const posicoesPublico = [
+        // Pessoas no Mezanino
+        [14, -5, 4.3], [14.5, -6, 4.3],
+        [13, 1, 4], [14.5, 1.5, 4],
+        [13.5, 5, 4], [14.5, 5.5, 4],
+
+        [12, -3.5, 0], [13, -5, 0], [14.5, -4, 0], // Sinuca
+        [-8.5, -0.5, 0], [-8.5, 0.5, 0], // Chopeira A
+        [8.5, -11.5, 0], [9.5, -11.5, 0], // Chopeira B
+        [8.5, -15.5, 0], [9.5, -15.5, 0], // WC
+
+        // Pessoas na lateral externa perto das entradas
+        [-13.5, -4, 0], [-14.5, 1.5, 0], [-13.0, -1, 0],
+
+        // Pessoas nas mesas redondas do fundo
+        [-9, -8.5, 0], [-6, -10.5, 0], [-3, -8.5, 0], [0, -10.5, 0],
+
+        // Pessoas na frente da Galpão Store / Yakiton
+        [-17, 8, 0], [-16, 7.5, 0], [-18, 8.2, 0], [-14, 7.8, 0],
+
+        // Pessoas perto das Pizzas e Caixas
+        [-16, -1, 0], [-16.5, 2.5, 0], [-15, 1, 0],
+
+        // Pessoas perto do Crepe, Lava Jato, Furya Garage
+        [-2, -11.5, 0], [1, -11.5, 0], [-1, -7, 0], [3, -11, 0]
+    ];
+
+    // 10 na frente do Palco em posições aleatórias
+    for(let i=0; i<10; i++) {
+        let rx = (Math.random() * 6) - 3;
+        let rz = (Math.random() * 2.5) + 3;
+        posicoesPublico.push([rx, rz, 0]);
+    }
+
+    posicoesPublico.forEach(pos => gerarPessoa(pos[0], pos[1], pos[2]));
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderizador.setSize(window.innerWidth, window.innerHeight);
+        renderizadorCSS.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animar() {
+        requestAnimationFrame(animar);
+        controles.update();
+
+        const tempo = Date.now() * 0.005;
+        // Luzes piscando com mais intensidade e padrão misto
+        luzPalco1.intensity = Math.abs(Math.sin(tempo * 2)) * 6;
+        luzPalco2.intensity = Math.abs(Math.cos(tempo * 1.5)) * 6;
+        luzPalco3.intensity = Math.abs(Math.sin(tempo * 2.5 + Math.PI/4)) * 6;
+        luzPalco4.intensity = Math.abs(Math.sin(tempo * 3)) * 6;
+
+        renderizador.render(cena, camera);
+        renderizadorCSS.render(cena, camera);
+    }
+    animar();
+</script>
+</body>
+</html>
